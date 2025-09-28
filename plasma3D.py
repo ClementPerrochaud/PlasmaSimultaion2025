@@ -449,7 +449,7 @@ def B_from_dipole(r, E_field, moment, mu_0):
 
 def run_pic_simulation_dipole(
     particles, E_field, B_field,
-    total_time, initial_dt,
+    total_time, initial_dt, moment = 10,
     safety_factor=0.5, mu_0=1.0
 ):
     time = 0.0
@@ -462,7 +462,7 @@ def run_pic_simulation_dipole(
     magnetic_energies = []
     phase_snapshots = {}
 
-    m0 = 00 * np.array([0.05, 0.05, 0.90])
+    m0 = moment * np.array([0.05, 0.05, 0.90])
     omega = 5 * 2/5 * np.pi
     axis_1 = np.array([0, 0, 1])
 
@@ -517,7 +517,7 @@ def run_pic_simulation_dipole(
         if int(time / total_time) % 100 == 0:
             position_history.append(particles['position'][track_idx].copy())
             TE = kinetic_energies[-1] + electric_energies[-1] + magnetic_energies[-1]
-            print(f"t = {time:.3f} | KE = {kinetic_energies[-1]:.3e} | ME = {magnetic_energies[-1]:.3e} | EE = {electric_energies[-1]:.3e} | TE = {TE:.3f} | dt = {dt:.2e}")
+            #print(f"t = {time:.3f} | KE = {kinetic_energies[-1]:.3e} | ME = {magnetic_energies[-1]:.3e} | EE = {electric_energies[-1]:.3e} | TE = {TE:.3f} | dt = {dt:.2e}")
 
         if abs(time - total_time / 2) < dt:
             phase_snapshots['mid'] = particles[['position', 'v_half']].copy()
@@ -608,7 +608,7 @@ def plot_ring_trajectories(ring_trajectories):
 
     plt.xlabel('x')
     plt.ylabel('y')
-    plt.title('Ring Particle Trajectories (x-y)')
+    plt.title('Ring Particle Trajectories (x–y)')
     plt.axis('equal')
     plt.grid(True)
     plt.tight_layout()
@@ -763,12 +763,12 @@ m = 1.0
 
 # --- Simulation Parameters (dimensionless) ---
 
-N = 30                      # N^3 has to be ~~ num_particles otherwise we get massive drifts in energy
+N = 90                      # N^3 has to be ~~ num_particles otherwise we get massive drifts in energy
 grid_shape = (N, N, N)
 grid_spacing = 1.0          # changing it creates a ton of instabilities, probably packing too densely the cells
 num_particles = 5004        # has to be divisible by 6 for initialisation ~5000
 temperature = 10            # only used in the Boltzmann initialisation, typical range is [0.1, 10] but 10 is starting to be unstable
-total_time = 5.0            # ~number of steps in the interations, can lead to a VERY long loop if not in line with the system's size (small system + many particles = very small dt)
+total_time = 10.0            # ~number of steps in the interations, can lead to a VERY long loop if not in line with the system's size (small system + many particles = very small dt)
 initial_dt = 0.005          # starting time step, will be adjusted by the program if too large
 
 
@@ -777,24 +777,24 @@ initial_dt = 0.005          # starting time step, will be adjusted by the progra
 E_field = Electric_Field(grid_shape, grid_spacing, epsilon_0=epsilon_0, mu_0=mu_0)
 B_field = Magnetic_Field(grid_shape, grid_spacing, epsilon_0=epsilon_0, mu_0=mu_0)
 particles = generate_particles(num_particles)
-particles = initiate_particles_MaxwellBoltzmann(E_field, B_field, particles, temperature, charge=-q, mass=m, kB=kB)
-#particles = initiate_particles_crossbeams(E_field, B_field, particles)
+#particles = initiate_particles_MaxwellBoltzmann(E_field, B_field, particles, temperature, charge=-q, mass=m, kB=kB)
+particles = initiate_particles_crossbeams(E_field, B_field, particles)
 
 
 # --- Run simulation ---
 
 times, ke, ee, me, position_history, track_idx, phase_snapshots = run_pic_simulation(particles, E_field, B_field, total_time, initial_dt)
-#times, ke, ee, me, position_history, track_idx, phase_snapshots, _ = run_pic_simulation_dipole(particles, E_field, B_field, total_time, initial_dt)
+#times, ke, ee, me, position_history, track_idx, phase_snapshots, _ = run_pic_simulation_dipole(particles, E_field, B_field, total_time, initial_dt, moment=moment)
 
 initial_total = ke[0] + ee[0] + me[0]
 final_total = ke[-1] + ee[-1] + me[-1]
 drift_percent = 100 * (final_total - initial_total) / initial_total
 print(f"Total energy drift: {drift_percent:.2f}%")
 
-
+#print("\n\n\n\n\n" + values)
 #plot_energy(times, ke, ee, me)
-plot_phase_space_snapshots(phase_snapshots)
+#plot_phase_space_snapshots(phase_snapshots)
 #plot_velocity_histograms(phase_snapshots)
 #plot_velocity_distributions_by_charge(phase_snapshots, particles, track_idx)
 ani = animate_particles_3D(position_history, E_field.domain_size, particles, track_idx, skip=1)
-#ani.save("crossing_beams.mp4", writer="ffmpeg", fps=60) # This very regularly crashes but I stole it off the internet and am way too lazy to figure out why so, euh, be careful it correctly saves?
+ani.save("crossing_beams.mp4", writer="ffmpeg", fps=60) # This very regularly crashes but I stole it off the internet and am way too lazy to figure out why so, euh, be careful it correctly saves?
